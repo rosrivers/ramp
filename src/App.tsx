@@ -16,6 +16,9 @@ export function App() {
   const { data: transactionsByEmployee, ...transactionsByEmployeeUtils } =
     useTransactionsByEmployee();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<Employee>(EMPTY_EMPLOYEE);
+  const [approvals, setApprovals] = useState<{ [key: string]: boolean }>({});
 
   const transactions = useMemo(
     () => paginatedTransactions?.data ?? transactionsByEmployee ?? null,
@@ -27,9 +30,8 @@ export function App() {
     transactionsByEmployeeUtils.invalidateData();
 
     await employeeUtils.fetchAll();
-    await paginatedTransactionsUtils.fetchAll();
-
     setIsLoading(false);
+    await paginatedTransactionsUtils.fetchAll();
   }, [employeeUtils, paginatedTransactionsUtils, transactionsByEmployeeUtils]);
 
   const loadTransactionsByEmployee = useCallback(
@@ -45,6 +47,26 @@ export function App() {
       loadAllTransactions();
     }
   }, [employeeUtils.loading, employees, loadAllTransactions]);
+
+  const handleEmployeeChange = async (newValue: Employee | null) => {
+    if (newValue == null) {
+      return;
+    }
+    setSelectedEmployee(newValue);
+    if (newValue.id === EMPTY_EMPLOYEE.id) {
+      await loadAllTransactions();
+    } else {
+      await loadTransactionsByEmployee(newValue.id);
+    }
+  };
+
+  const handleApprovalChange = (transactionId: string, newValue: boolean) => {
+    setApprovals((prev) => ({ ...prev, [transactionId]: newValue }));
+  };
+
+  const hasMoreTransactions = useMemo(() => {
+    return paginatedTransactions?.nextPage !== null;
+  }, [paginatedTransactions]);
 
   return (
     <Fragment>
@@ -63,31 +85,31 @@ export function App() {
             value: item.id,
             label: `${item.firstName} ${item.lastName}`,
           })}
-          onChange={async (newValue) => {
-            if (newValue === null) {
-              return;
-            } else if (newValue.id === "") {
-              await loadAllTransactions();
-            } else await loadTransactionsByEmployee(newValue.id);
-          }}
+          onChange={handleEmployeeChange}
         />
 
         <div className="RampBreak--l" />
 
         <div className="RampGrid">
-          <Transactions transactions={transactions} />
+          <Transactions
+            transactions={transactions}
+            approvals={approvals}
+            onApprovalChange={handleApprovalChange}
+          />
 
-          {transactions !== null && (
-            <button
-              className="RampButton"
-              disabled={paginatedTransactionsUtils.loading}
-              onClick={async () => {
-                await loadAllTransactions();
-              }}
-            >
-              View More
-            </button>
-          )}
+          {transactions !== null &&
+            selectedEmployee?.id === EMPTY_EMPLOYEE.id &&
+            hasMoreTransactions && (
+              <button
+                className="RampButton"
+                disabled={paginatedTransactionsUtils.loading}
+                onClick={async () => {
+                  await paginatedTransactionsUtils.fetchAll();
+                }}
+              >
+                View More
+              </button>
+            )}
         </div>
       </main>
     </Fragment>
