@@ -7,6 +7,7 @@ import { usePaginatedTransactions } from "./hooks/usePaginatedTransactions";
 import { useTransactionsByEmployee } from "./hooks/useTransactionsByEmployee";
 import { EMPTY_EMPLOYEE } from "./utils/constants";
 import { Employee } from "./utils/types";
+import React from "react";
 
 export function App() {
   const { data: employees, ...employeeUtils } = useEmployees();
@@ -65,9 +66,9 @@ export function App() {
           onChange={async (newValue) => {
             if (newValue === null) {
               return;
-            }
-
-            await loadTransactionsByEmployee(newValue.id);
+            } else if (newValue.id === "") {
+              await loadAllTransactions();
+            } else await loadTransactionsByEmployee(newValue.id);
           }}
         />
 
